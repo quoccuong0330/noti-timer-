@@ -12,7 +12,19 @@ async function sendTelegram(chatId: string, reminderId: string, title: string, m
   if (!response.ok) throw new Error(`Telegram returned ${response.status}`);
 }
 
+async function restoreMissingJobs() {
+  const reminders = await prisma.reminder.findMany({ where: { active: true, nextRunAt: { not: null } }, include: { profile: true, user: true, jobs: { where: { status: { in: ['pending', 'processing'] } } } } });
+  for (const reminder of reminders) {
+    if (reminder.jobs.length) continue;
+    const timeZone = reminder.profile?.timezone ?? reminder.user.timezone;
+    const runAt = nextRun(new Date(), reminder.mode, reminder.intervalMinutes, reminder.fixedTime, timeZone, reminder.daysOfWeek.split(',').map(Number));
+    if (!runAt) continue;
+    await prisma.$transaction([prisma.reminder.update({ where: { id: reminder.id }, data: { nextRunAt: runAt } }), prisma.reminderJob.create({ data: { reminderId: reminder.id, userId: reminder.userId, runAt } })]);
+  }
+}
+
 async function processJobs() {
+  await restoreMissingJobs();
   const jobs = await prisma.reminderJob.findMany({ where: { status: 'pending', runAt: { lte: new Date() } }, include: { reminder: { include: { profile: { include: { telegramConnection: true } } } }, user: true }, take: 25 });
   for (const job of jobs) {
     const claimed = await prisma.reminderJob.updateMany({ where: { id: job.id, status: 'pending' }, data: { status: 'processing', lockedAt: new Date(), attempts: { increment: 1 } } });
