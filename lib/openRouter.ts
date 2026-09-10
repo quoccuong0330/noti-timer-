@@ -7,7 +7,7 @@ async function requestOpenRouter(prompt: string, maxTokens: number): Promise<str
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': process.env.APP_URL ?? 'http://localhost:3003', 'X-Title': 'Pulse reminders' },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.9, max_tokens: maxTokens }),
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.9, max_tokens: maxTokens, reasoning: { exclude: true } }),
   });
   if (!response.ok) throw new Error(`OpenRouter returned ${response.status}`);
   const data = await response.json() as OpenRouterResponse;
@@ -27,7 +27,9 @@ export async function generateReminderVariants(title: string, profileName: strin
 }
 
 function cleanMessage(message: string): string {
-  return message.split('\n')[0]?.replace(/^\s*[-*\d.)]+\s*/, '').trim() ?? '';
+  const lines = message.replace(/<think>[\s\S]*?<\/think>/gi, '').split('\n').map((line) => line.replace(/^\s*[-*\d.)]+\s*/, '').replace(/^\s*(final answer|answer)\s*:\s*/i, '').trim()).filter(Boolean);
+  const usable = lines.filter((line) => !/thinking process|thought process|chain of thought|^analysis\s*:/i.test(line));
+  return usable.find((line) => !/^(here'?s|sure|okay|certainly)\b/i.test(line)) ?? '';
 }
 
 function fallbackMessage(title: string, profileName: string): string {
