@@ -1,0 +1,4 @@
+'use client';
+import { FormEvent, useState } from 'react';
+import { signIn } from 'next-auth/react';
+export default function LoginForm() { const [error, setError] = useState(''); async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); const result = await signIn('credentials', { email: data.get('email'), password: data.get('password'), redirect: false }); if (result?.error) setError('That email and password do not match.'); else window.location.href = '/profiles'; } return <form className="authForm" onSubmit={submit}><label>Email<input name="email" type="email" required /></label><label>Password<input name="password" type="password" minLength={8} required /></label>{error && <p className="formError">{error}</p>}<button className="primaryButton">Sign in <span>→</span></button><p className="authFoot">New here? <a href="/register">Create an account</a></p></form>; }

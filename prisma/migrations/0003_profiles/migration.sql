@@ -1,0 +1,5 @@
+CREATE TABLE "Profile" ("id" TEXT NOT NULL,"userId" TEXT NOT NULL,"name" TEXT NOT NULL,"timezone" TEXT NOT NULL DEFAULT 'UTC',"activeStart" TEXT NOT NULL DEFAULT '08:00',"activeEnd" TEXT NOT NULL DEFAULT '22:00',"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "Profile_pkey" PRIMARY KEY ("id"));
+ALTER TABLE "TelegramConnection" ADD COLUMN "profileId" TEXT; ALTER TABLE "Reminder" ADD COLUMN "profileId" TEXT;
+DROP INDEX "TelegramConnection_userId_key";
+CREATE UNIQUE INDEX "TelegramConnection_profileId_key" ON "TelegramConnection"("profileId"); CREATE INDEX "Profile_userId_idx" ON "Profile"("userId");
+ALTER TABLE "Profile" ADD CONSTRAINT "Profile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; ALTER TABLE "TelegramConnection" ADD CONSTRAINT "TelegramConnection_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "Profile"("id") ON DELETE CASCADE ON UPDATE CASCADE; ALTER TABLE "Reminder" ADD CONSTRAINT "Reminder_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "Profile"("id") ON DELETE SET NULL ON UPDATE CASCADE;

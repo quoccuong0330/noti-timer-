@@ -1,0 +1,2 @@
+import RegisterForm from './registerForm';
+export default function RegisterPage() { return <main className="authPage"><div className="authCard"><div className="brand"><span className="brandMark">P</span> pulse</div><p className="eyebrow">A QUIETER WAY TO REMEMBER</p><h1>Make space for what matters.</h1><p className="lede">Create an account and connect your first Telegram reminder.</p><RegisterForm /></div></main>; }

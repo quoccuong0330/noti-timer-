@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  name                String?
+  email               String               @unique
+  passwordHash        String
+  timezone            String               @default("UTC")
+  activeStart         String               @default("08:00")
+  activeEnd           String               @default("22:00")
+  telegramConnections TelegramConnection[]
+  profiles            Profile[]
+  reminders           Reminder[]
+  jobs                ReminderJob[]
+  deliveries          DeliveryLog[]
+  accounts            Account[]
+  sessions            Session[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model TelegramConnection {
+  id          String   @id @default(cuid())
+  userId      String
+  profileId   String?  @unique
+  chatId      String   @unique
+  username    String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile     Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  connectedAt DateTime @default(now())
+}
+
+model Reminder {
+  id              String        @id @default(cuid())
+  userId          String
+  profileId       String?       @unique
+  title           String
+  mode            String        @default("interval")
+  intervalMinutes Int?
+  fixedTime       String?
+  daysOfWeek      String        @default("0,1,2,3,4,5,6")
+  messageVariants String?
+  active          Boolean       @default(true)
+  nextRunAt       DateTime?
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile         Profile?      @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  jobs            ReminderJob[]
+  deliveries      DeliveryLog[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([active, nextRunAt])
+}
+
+model Profile {
+  id                 String              @id @default(cuid())
+  userId             String
+  name               String
+  timezone           String              @default("UTC")
+  activeStart        String              @default("08:00")
+  activeEnd          String              @default("22:00")
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramConnection TelegramConnection?
+  reminders          Reminder[]
+  createdAt          DateTime            @default(now())
+
+  @@index([userId])
+}
+
+model ReminderJob {
+  id         String    @id @default(cuid())
+  reminderId String
+  userId     String
+  runAt      DateTime
+  status     String    @default("pending")
+  lockedAt   DateTime?
+  attempts   Int       @default(0)
+  reminder   Reminder  @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reminderId, runAt])
+  @@index([status, runAt])
+}
+
+model DeliveryLog {
+  id          String   @id @default(cuid())
+  reminderId  String
+  userId      String
+  jobId       String?
+  channel     String
+  status      String
+  error       String?
+  deliveredAt DateTime @default(now())
+  reminder    Reminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([reminderId, deliveredAt])
+}
+
+model Account {
+  id                String @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

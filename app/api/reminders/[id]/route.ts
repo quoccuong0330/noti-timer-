@@ -1,0 +1,5 @@
+import { NextResponse } from 'next/server';
+import { auth } from '../../../../auth';
+import { prisma } from '../../../../lib/prisma';
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) { const session = await auth(); if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); const { id } = await params; const user = await prisma.user.findUniqueOrThrow({ where: { email: session.user.email } }); const data = await request.json(); const reminder = await prisma.reminder.updateMany({ where: { id, userId: user.id }, data: { active: Boolean(data.active) } }); return NextResponse.json(reminder); }
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) { const session = await auth(); if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); const { id } = await params; const user = await prisma.user.findUniqueOrThrow({ where: { email: session.user.email } }); await prisma.reminder.deleteMany({ where: { id, userId: user.id } }); return new NextResponse(null, { status: 204 }); }
