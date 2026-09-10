@@ -1,6 +1,6 @@
 import { generateReminderMessage } from './lib/openRouter';
 import { prisma } from './lib/prisma';
-import { inActiveHours, nextRun } from './lib/schedule';
+import { nextRun } from './lib/schedule';
 
 async function sendTelegram(chatId: string, reminderId: string, title: string, message: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -34,7 +34,6 @@ async function processJobs() {
     try {
       if (!job.reminder.active) throw new Error('Reminder is paused');
       if (!target?.telegramConnection) throw new Error('Telegram profile is not connected');
-      if (!inActiveHours(new Date(), target.activeStart, target.activeEnd, timeZone)) throw new Error('Outside active hours');
       const message = await generateReminderMessage(job.reminder.title, target.name);
       await sendTelegram(target.telegramConnection.chatId, job.reminder.id, job.reminder.title, message);
       await prisma.deliveryLog.create({ data: { reminderId: job.reminderId, userId: job.userId, jobId: job.id, channel: 'telegram', status: 'sent' } });
@@ -44,8 +43,7 @@ async function processJobs() {
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Unknown error';
       await prisma.deliveryLog.create({ data: { reminderId: job.reminderId, userId: job.userId, jobId: job.id, channel: 'telegram', status: 'failed', error: reason } });
-      if (reason === 'Outside active hours') await prisma.reminderJob.update({ where: { id: job.id }, data: { status: 'pending', runAt: new Date(Date.now() + 5 * 60000), attempts: 0, lockedAt: null } });
-      else await prisma.reminderJob.update({ where: { id: job.id }, data: { status: job.attempts >= 3 ? 'failed' : 'pending', lockedAt: null } });
+      await prisma.reminderJob.update({ where: { id: job.id }, data: { status: job.attempts >= 3 ? 'failed' : 'pending', lockedAt: null } });
     }
   }
 }
