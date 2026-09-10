@@ -1,4 +1,4 @@
-version: '2.4'
+version: '3.3'
 
 services:
   postgresql:
@@ -26,8 +26,8 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       APP_URL: ${APP_URL}
     depends_on:
-      postgresql:
-        condition: service_healthy
+      - postgresql
+    restart: on-failure
     ports:
       - "3003:3000"
   worker:
@@ -40,7 +40,7 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       WORKER_POLL_MS: ${WORKER_POLL_MS}
     depends_on:
-      postgresql:
-        condition: service_healthy
+      - postgresql
+    restart: on-failure
 volumes:
   pulseData:
