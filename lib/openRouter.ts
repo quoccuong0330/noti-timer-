@@ -16,10 +16,24 @@ async function requestOpenRouter(prompt: string, maxTokens: number): Promise<str
 
 export async function generateReminderMessage(title: string, profileName: string): Promise<string> {
   const message = await requestOpenRouter(`Viết đúng 1 câu nhắc việc tiếng Việt thật dễ thương và tự nhiên cho ${profileName}. Việc cần nhắc: "${title}". Câu phải gọi "${profileName}" ở đầu câu, tối đa 1 emoji nhẹ nhàng. Không đánh số, không giải thích, chỉ trả về câu nhắc.`, 100);
-  return message.split('\n')[0]?.replace(/^\s*[-*\d.)]+\s*/, '').trim() ?? '';
+  return cleanMessage(message) || fallbackMessage(title, profileName);
 }
 
 export async function generateReminderVariants(title: string, profileName: string): Promise<string[]> {
   const text = await requestOpenRouter(`Viết 5 câu nhắc việc tiếng Việt thật dễ thương, tự nhiên và khác nhau cho ${profileName}. Việc cần nhắc là: "${title}". Mỗi câu phải gọi tên "${profileName}" ở đầu câu. Có thể dùng tối đa 1 emoji nhẹ nhàng mỗi câu. Không đánh số, không giải thích, mỗi câu một dòng.`, 300);
-  return text.split('\n').map((line) => line.replace(/^\s*[-*\d.)]+\s*/, '').trim()).filter(Boolean).slice(0, 5);
+  const variants = text.split('\n').map(cleanMessage).filter(Boolean).slice(0, 5);
+  return variants.length ? variants : [fallbackMessage(title, profileName)];
+}
+
+function cleanMessage(message: string): string {
+  return message.split('\n')[0]?.replace(/^\s*[-*\d.)]+\s*/, '').trim() ?? '';
+}
+
+function fallbackMessage(title: string, profileName: string): string {
+  const suggestions = [
+    `${profileName} ơi, đến lúc ${title.toLowerCase()} một chút rồi đó — mình làm nhẹ nhàng nhé.`,
+    `${profileName}, dành vài phút cho việc ${title.toLowerCase()} nha, xong rồi sẽ thấy người nhẹ tênh.`,
+    `Nhắc ${profileName} nè: ${title.toLowerCase()} thôi, một bước nhỏ cho hôm nay thật ổn.`,
+  ];
+  return suggestions[Math.floor(Date.now() / 60000) % suggestions.length];
 }
