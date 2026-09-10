@@ -23,7 +23,7 @@ export async function generateReminderMessage(title: string, profileName: string
 export async function generateReminderVariants(title: string, profileName: string): Promise<string[]> {
   const text = await requestOpenRouter(`Viết 5 câu nhắc việc tiếng Việt thật dễ thương, tự nhiên và khác nhau cho ${profileName}. Việc cần nhắc là: "${title}". Mỗi câu phải gọi tên "${profileName}" ở đầu câu. Có thể dùng tối đa 1 emoji nhẹ nhàng mỗi câu. Không đánh số, không giải thích, mỗi câu một dòng.`, 300);
   const variants = text.split('\n').map(cleanMessage).filter(Boolean).slice(0, 5);
-  return variants.length ? variants : [fallbackMessage(title, profileName)];
+  return variants.length >= 5 ? variants : fallbackMessages(title, profileName);
 }
 
 function cleanMessage(message: string): string {
@@ -33,10 +33,15 @@ function cleanMessage(message: string): string {
 }
 
 function fallbackMessage(title: string, profileName: string): string {
-  const suggestions = [
+  return fallbackMessages(title, profileName)[Math.floor(Date.now() / 60000) % 5];
+}
+
+function fallbackMessages(title: string, profileName: string): string[] {
+  return [
     `${profileName} ơi, đến lúc ${title.toLowerCase()} một chút rồi đó — mình làm nhẹ nhàng nhé.`,
     `${profileName}, dành vài phút cho việc ${title.toLowerCase()} nha, xong rồi sẽ thấy người nhẹ tênh.`,
     `Nhắc ${profileName} nè: ${title.toLowerCase()} thôi, một bước nhỏ cho hôm nay thật ổn.`,
+    `${profileName} ơi, cùng ${title.toLowerCase()} để chăm mình thêm một chút nha.`,
+    `Đến giờ rồi ${profileName}, mình ${title.toLowerCase()} nhé — bạn làm tốt lắm.`,
   ];
-  return suggestions[Math.floor(Date.now() / 60000) % suggestions.length];
 }

@@ -1,4 +1,3 @@
-import { generateReminderMessage } from './lib/openRouter';
 import { prisma } from './lib/prisma';
 import { nextRun } from './lib/schedule';
 
@@ -10,6 +9,18 @@ async function sendTelegram(chatId: string, reminderId: string, title: string, m
     body: JSON.stringify({ chat_id: chatId, text: `⏰ ${message || title}`, reply_markup: { inline_keyboard: [[{ text: 'Done', callback_data: `done:${reminderId}` }, { text: 'Snooze 15m', callback_data: `snooze:${reminderId}` }, { text: 'Pause', callback_data: `pause:${reminderId}` }]] } }),
   });
   if (!response.ok) throw new Error(`Telegram returned ${response.status}`);
+}
+
+async function reminderMessage(reminderId: string, title: string, variants: string | null) {
+  if (!variants) return title;
+  try {
+    const messages = JSON.parse(variants) as unknown;
+    if (!Array.isArray(messages) || !messages.length) return title;
+    const sentCount = await prisma.deliveryLog.count({ where: { reminderId, status: 'sent' } });
+    return String(messages[sentCount % messages.length] || title);
+  } catch {
+    return title;
+  }
 }
 
 async function restoreMissingJobs() {
@@ -34,7 +45,7 @@ async function processJobs() {
     try {
       if (!job.reminder.active) throw new Error('Reminder is paused');
       if (!target?.telegramConnection) throw new Error('Telegram profile is not connected');
-      const message = await generateReminderMessage(job.reminder.title, target.name);
+      const message = await reminderMessage(job.reminder.id, job.reminder.title, job.reminder.messageVariants);
       await sendTelegram(target.telegramConnection.chatId, job.reminder.id, job.reminder.title, message);
       await prisma.deliveryLog.create({ data: { reminderId: job.reminderId, userId: job.userId, jobId: job.id, channel: 'telegram', status: 'sent' } });
       const days = job.reminder.daysOfWeek.split(',').map(Number);

@@ -13,6 +13,7 @@ const input = z.object({
   daysOfWeek: z.array(z.number().int().min(0).max(6)).default([0, 1, 2, 3, 4, 5, 6]),
   profileId: z.string().optional(),
 });
+const generatedActivities = new Set(['Uống nước', 'Uống thuốc', 'Ăn sáng', 'Nghỉ mắt', 'Đứng dậy vận động', 'Tập thể dục', 'Học bài', 'Ngủ sớm']);
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -32,10 +33,12 @@ export async function POST(request: Request) {
     const timeZone = profile?.timezone ?? user.timezone;
     const runAt = nextRun(new Date(), data.mode, data.intervalMinutes, data.fixedTime, timeZone, data.daysOfWeek);
     let messageVariants: string[] = [];
-    try {
-      messageVariants = await generateReminderVariants(data.title, profile?.name ?? user.name ?? 'bạn');
-    } catch (error) {
-      console.error('OpenRouter generation failed', error);
+    if (generatedActivities.has(data.title)) {
+      try {
+        messageVariants = await generateReminderVariants(data.title, profile?.name ?? user.name ?? 'bạn');
+      } catch (error) {
+        console.error('OpenRouter generation failed', error);
+      }
     }
     const reminder = await prisma.reminder.create({ data: { ...data, daysOfWeek: data.daysOfWeek.join(','), messageVariants: messageVariants.length ? JSON.stringify(messageVariants) : null, userId: user.id, nextRunAt: runAt } });
     if (runAt) await prisma.reminderJob.create({ data: { reminderId: reminder.id, userId: user.id, runAt } });
