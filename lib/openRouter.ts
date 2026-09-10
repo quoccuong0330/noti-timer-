@@ -16,7 +16,8 @@ async function requestOpenRouter(prompt: string, maxTokens: number): Promise<str
 
 export async function generateReminderMessage(title: string, profileName: string): Promise<string> {
   const message = await requestOpenRouter(`Viết đúng 1 câu nhắc việc tiếng Việt thật dễ thương và tự nhiên cho ${profileName}. Việc cần nhắc: "${title}". Câu phải gọi "${profileName}" ở đầu câu, tối đa 1 emoji nhẹ nhàng. Không đánh số, không giải thích, chỉ trả về câu nhắc.`, 100);
-  return cleanMessage(message) || fallbackMessage(title, profileName);
+  const cleaned = cleanMessage(message);
+  return cleaned && cleaned.toLowerCase() !== title.trim().toLowerCase() ? cleaned : fallbackMessage(title, profileName);
 }
 
 export async function generateReminderVariants(title: string, profileName: string): Promise<string[]> {
